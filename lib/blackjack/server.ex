@@ -43,6 +43,12 @@ defmodule Blackjack.Server do
         GenServer.call(server, {:stick, g_name, p_name})
     end
 
+    # Combination of 'new_game' and 'deal' for convenience
+    def connect(server, g_name, p_name) do
+        new_game(server, g_name)
+        deal(server, g_name, p_name)
+    end
+
     # Server Callbacks
 
     @impl true
