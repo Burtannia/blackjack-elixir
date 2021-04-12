@@ -13,7 +13,7 @@ defmodule Blackjack.Registry do
     # Games
 
     def new_game(registry, g_name) do
-        GenServer.cast(registry, {:new_game, g_name})
+        GenServer.call(registry, {:new_game, g_name})
     end
 
     def get_game(registry, g_name) do
@@ -104,17 +104,17 @@ defmodule Blackjack.Registry do
         {:reply, mscore, state}
     end
 
-    # change this to call
     @impl true
-    def handle_cast({:new_game, g_name}, {games, refs}) do
-        if Map.has_key?(games, g_name) do
-            {:noreply, {games, refs}}
-        else
-            {:ok, pid} = DynamicSupervisor.start_child(Blackjack.GameSupervisor, Blackjack.Game)
-            ref = Process.monitor(pid)
-            new_refs = Map.put(refs, ref, g_name)
-            new_games = Map.put(games, g_name, pid)
-            {:noreply, {new_games, new_refs}}
+    def handle_call({:new_game, g_name}, _from, {games, refs}) do
+        case Map.fetch(games, g_name) do
+            {:ok, pid} ->
+                {:reply, pid, {games, refs}}
+            :error ->
+                {:ok, pid} = DynamicSupervisor.start_child(Blackjack.GameSupervisor, Blackjack.Game)
+                ref = Process.monitor(pid)
+                new_refs = Map.put(refs, ref, g_name)
+                new_games = Map.put(games, g_name, pid)
+                {:reply, pid, {new_games, new_refs}}
         end
     end
 
