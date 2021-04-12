@@ -10,8 +10,6 @@ defmodule Blackjack.Registry do
         GenServer.start_link(__MODULE__, :ok, opts)
     end
 
-    # Games
-
     def new_game(registry, g_name) do
         GenServer.call(registry, {:new_game, g_name})
     end
@@ -24,35 +22,25 @@ defmodule Blackjack.Registry do
         GenServer.call(registry, {:end_game, g_name})
     end
 
-    # Hands
-
-    def deal(registry, g_name, p_name) do
-        GenServer.call(registry, {:deal, g_name, p_name})
-    end
-
-    def get_hand(registry, g_name, p_name) do
-        GenServer.call(registry, {:get_hand, g_name, p_name})
-    end
-
-    def hit(registry, g_name, p_name) do
-        GenServer.call(registry, {:hit, g_name, p_name})
-    end
-
-    def stick(registry, g_name, p_name) do
-        GenServer.call(registry, {:stick, g_name, p_name})
-    end
-
-    #Combination of 'new_game' and 'deal' for convenience
-    def connect(registry, g_name, p_name) do
-        new_game(registry, g_name)
-        deal(registry, g_name, p_name)
-    end
-
     # Server Callbacks
 
     @impl true
     def init(:ok) do
         {:ok, {%{}, %{}}}
+    end
+
+    @impl true
+    def handle_call({:new_game, g_name}, _from, {games, refs}) do
+        case Map.fetch(games, g_name) do
+            {:ok, pid} ->
+                {:reply, pid, {games, refs}}
+            :error ->
+                {:ok, pid} = DynamicSupervisor.start_child(Blackjack.GameSupervisor, Blackjack.Game)
+                ref = Process.monitor(pid)
+                new_refs = Map.put(refs, ref, g_name)
+                new_games = Map.put(games, g_name, pid)
+                {:reply, pid, {new_games, new_refs}}
+        end
     end
 
     @impl true
@@ -71,52 +59,6 @@ defmodule Blackjack.Registry do
         # but I don't see a way to efficiently acquire the ref in order to delete it.
         # maybe we should use a "dummy" call here to force the :DOWN message to be handled before this returns?
         {:reply, mgame, state}
-    end
-
-    @impl true
-    def handle_call({:get_hand, g_name, p_name}, _from, state) do
-        {games, _} = state
-        mgame = Map.fetch(games, g_name)
-        mhand = bind_maybe(mgame, &Game.hand(&1, p_name))
-        {:reply, mhand, games}
-    end
-
-    @impl true
-    def handle_call({:deal, g_name, p_name}, _from, state) do
-        {games, _} = state
-        mgame = Map.fetch(games, g_name)
-        mhand = fmap_maybe(mgame, &Game.deal(&1, p_name))
-        {:reply, mhand, state}
-    end
-
-    @impl true
-    def handle_call({:hit, g_name, p_name}, _from, state) do
-        {games, _} = state
-        mgame = Map.fetch(games, g_name)
-        mhand = fmap_maybe(mgame, &Game.hit(&1, p_name))
-        {:reply, mhand, state}
-    end
-
-    @impl true
-    def handle_call({:stick, g_name, p_name}, _from, state) do
-        {games, _} = state
-        mgame = Map.fetch(games, g_name)
-        mscore = fmap_maybe(mgame, &Game.stick(&1, p_name))
-        {:reply, mscore, state}
-    end
-
-    @impl true
-    def handle_call({:new_game, g_name}, _from, {games, refs}) do
-        case Map.fetch(games, g_name) do
-            {:ok, pid} ->
-                {:reply, pid, {games, refs}}
-            :error ->
-                {:ok, pid} = DynamicSupervisor.start_child(Blackjack.GameSupervisor, Blackjack.Game)
-                ref = Process.monitor(pid)
-                new_refs = Map.put(refs, ref, g_name)
-                new_games = Map.put(games, g_name, pid)
-                {:reply, pid, {new_games, new_refs}}
-        end
     end
 
     @impl true

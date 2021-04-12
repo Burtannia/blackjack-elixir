@@ -11,7 +11,7 @@ defmodule Blackjack.Score do
     defimpl String.Chars, for: Score do
         def to_string(%{total_score: total, games_played: played}) do
             average = Float.round(total / played, 1)
-            "Average score: #{average} Hands Played: #{played}"
+            "Average score: #{average} Hands Played: #{played}\n"
         end
     end
 

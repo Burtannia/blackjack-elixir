@@ -25,11 +25,15 @@ defmodule Blackjack.Game do
 
     defimpl String.Chars, for: Game do
         def to_string(game) do
-            "Player Scores:" <>
+            "\n" <>
+            "Player Scores\n" <>
+            "-------------\n" <>
             Game.to_string_scores(game) <>
             "\n" <>
-            "Current Hands:" <>
-            Game.to_string_hands(game)
+            "Current Hands\n" <>
+            "-------------\n" <>
+            Game.to_string_hands(game) <>
+            "\n"
         end
     end
 
@@ -37,7 +41,7 @@ defmodule Blackjack.Game do
     def to_string_hand(cards) do
         score = Card.score_string(Card.calc_score(cards))
         card_string = for c <- cards, into: "", do: " " <> to_string(c)
-        String.trim(card_string) <> " #{score}"
+        String.trim(card_string) <> " #{score}\n"
     end
 
     @spec to_string_scores(Game.t) :: String.t
@@ -49,7 +53,7 @@ defmodule Blackjack.Game do
     @spec to_string_players(%{player => term}, (term -> String.t)) :: String.t
     defp to_string_players(m, f) do
         for {player, x} <- m, into: "" do
-            "\n#{player}: " <> f.(x)
+            "#{player}: " <> f.(x)
         end
     end
 
@@ -72,6 +76,12 @@ defmodule Blackjack.Game do
     def get_hand(game, player) do
         mcards = Map.fetch(game.hands, player)
         fmap_maybe(mcards, &to_string_hand/1)
+    end
+
+    @spec get_score(Game.t, player) :: Maybe.t
+    def get_score(game, player) do
+        Map.fetch(game.scores, player)
+        |> fmap_maybe(&to_string/1)
     end
 
     @spec hit_hand(Game.t, player) :: {[Card.t], Game.t}
@@ -104,6 +114,10 @@ defmodule Blackjack.Game do
         Agent.start_link(&new/0)
     end
 
+    def table(game) do
+        Agent.get(game, &to_string(&1))
+    end
+
     def hit(game, player) do
         hand = Agent.get_and_update(game, &hit_hand(&1, player))
         to_string_hand(hand)
@@ -121,5 +135,9 @@ defmodule Blackjack.Game do
 
     def hand(game, player) do
         Agent.get(game, &get_hand(&1, player))
+    end
+
+    def score(game, player) do
+        Agent.get(game, &get_score(&1, player))
     end
 end

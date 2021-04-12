@@ -1,8 +1,12 @@
 defmodule Maybe do
-    __MODULE__
-
     @type t :: {:ok, term} | :error
     # is it possible to replace this with a macro to properly parameterise "term"?
+
+    @type t2(a) :: {:ok, a} | :error
+
+    @spec test_f(Maybe.t2(integer)) :: Maybe.t2(integer)
+    def test_f(:error), do: :error
+    def test_f({:ok, n}), do: n # why does dialyzer not complain about this? n is clearly an integer not t2(integer).
 
     # not perfect because this can't check whether the term inside
     # the maybe has the same type as the term on the LHS of f.
