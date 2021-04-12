@@ -98,8 +98,8 @@ defmodule Blackjack.Game do
         {cards, new_hs} = Map.pop!(hs, player) # need to handle this, maybe have entire function return a maybe type?
 
         score_val = cards
-            |> Cards.calc_score
-            |> (fn x -> if x > 21, do: 0, else: x end)
+            |> Card.calc_score
+            |> Card.bound_check
             
         score = Map.fetch(ss, player)
             |> fmap_maybe(&Score.update(&1, score_val))

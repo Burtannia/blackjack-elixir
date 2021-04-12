@@ -1,5 +1,4 @@
 defmodule Blackjack.Registry do
-    alias Blackjack.Game, as: Game
     import Maybe
 
     use GenServer

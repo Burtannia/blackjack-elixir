@@ -95,4 +95,9 @@ defmodule Blackjack.Card do
     def score_string(n) when n > 21, do: "(#{n} - BUST!)"
     def score_string(21), do: "(21 - Blackjack!)"
     def score_string(n), do: "(#{n})"
+
+    @spec bound_check(integer) :: integer
+    def bound_check(n) do
+        if n > 21, do: 0, else: n
+    end
 end
