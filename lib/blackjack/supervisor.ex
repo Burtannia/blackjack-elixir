@@ -8,7 +8,7 @@ defmodule Blackjack.Supervisor do
     @impl true
     def init(:ok) do
         children = [
-            {Blackjack.Server, name: Blackjack.Server}
+            {Blackjack.Registry, name: Blackjack.Registry}
         ]
 
         Supervisor.init(children, strategy: :one_for_one)

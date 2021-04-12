@@ -1,5 +1,4 @@
-defmodule Blackjack.Server do
-    alias __MODULE__
+defmodule Blackjack.Registry do
     alias Blackjack.Game, as: Game
     import Maybe
 
@@ -8,45 +7,45 @@ defmodule Blackjack.Server do
     # Client API
 
     def start_link(opts) do
-        GenServer.start_link(Server, :ok, opts)
+        GenServer.start_link(__MODULE__, :ok, opts)
     end
 
     # Games
 
-    def new_game(server, g_name) do
-        GenServer.cast(server, {:new_game, g_name})
+    def new_game(registry, g_name) do
+        GenServer.cast(registry, {:new_game, g_name})
     end
 
-    def get_game(server, g_name) do
-        GenServer.call(server, {:get_game, g_name})
+    def get_game(registry, g_name) do
+        GenServer.call(registry, {:get_game, g_name})
     end
 
-    def end_game(server, g_name) do
-        GenServer.call(server, {:end_game, g_name})
+    def end_game(registry, g_name) do
+        GenServer.call(registry, {:end_game, g_name})
     end
 
     # Hands
 
-    def deal(server, g_name, p_name) do
-        GenServer.call(server, {:deal, g_name, p_name})
+    def deal(registry, g_name, p_name) do
+        GenServer.call(registry, {:deal, g_name, p_name})
     end
 
-    def get_hand(server, g_name, p_name) do
-        GenServer.call(server, {:get_hand, g_name, p_name})
+    def get_hand(registry, g_name, p_name) do
+        GenServer.call(registry, {:get_hand, g_name, p_name})
     end
 
-    def hit(server, g_name, p_name) do
-        GenServer.call(server, {:hit, g_name, p_name})
+    def hit(registry, g_name, p_name) do
+        GenServer.call(registry, {:hit, g_name, p_name})
     end
 
-    def stick(server, g_name, p_name) do
-        GenServer.call(server, {:stick, g_name, p_name})
+    def stick(registry, g_name, p_name) do
+        GenServer.call(registry, {:stick, g_name, p_name})
     end
 
     #Combination of 'new_game' and 'deal' for convenience
-    def connect(server, g_name, p_name) do
-        new_game(server, g_name)
-        deal(server, g_name, p_name)
+    def connect(registry, g_name, p_name) do
+        new_game(registry, g_name)
+        deal(registry, g_name, p_name)
     end
 
     # Server Callbacks
