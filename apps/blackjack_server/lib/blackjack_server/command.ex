@@ -25,7 +25,7 @@ defmodule BlackjackServer.Command do
     end
 
     def run({:table, game}) do
-        fmap(game, &Game.table(&1))
+        fmap_reg(game, &Game.table(&1))
     end
 
     def run({:end, game}) do
@@ -34,31 +34,31 @@ defmodule BlackjackServer.Command do
     end
 
     def run({:deal, player, game}) do
-        fmap(game, &Game.deal(&1, player))
+        fmap_reg(game, &Game.deal(&1, player))
     end
 
     def run({:hit, player, game}) do
-        fmap(game, &Game.hit(&1, player))
+        fmap_reg(game, &Game.hit(&1, player))
     end
 
     def run({:stick, player, game}) do
-        fmap(game, &Game.stick(&1, player))
+        fmap_reg(game, &Game.stick(&1, player))
     end
 
     def run({:hand, player, game}) do
-        bind(game, &Game.hand(&1, player))
+        bind_reg(game, &Game.hand(&1, player))
     end
 
     def run({:score, player, game}) do
-        bind(game, &Game.score(&1, player))
+        bind_reg(game, &Game.score(&1, player))
     end
 
-    defp fmap(game, f) do
+    defp fmap_reg(game, f) do
         Registry.get_game(Registry, game)
         |> fmap_maybe(f)
     end
 
-    defp bind(game, f) do
+    defp bind_reg(game, f) do
         Registry.get_game(Registry, game)
         |> bind_maybe(f)
     end
