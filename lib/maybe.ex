@@ -6,6 +6,7 @@ defmodule Maybe do
 
     # not perfect because this can't check whether the term inside
     # the maybe has the same type as the term on the LHS of f.
+    # if we can parameterise Maybe.t then we can use "when a: term"
     @spec fmap_maybe(Maybe.t, (term -> term)) :: Maybe.t
     def fmap_maybe({:ok, x}, f), do: {:ok, f.(x)}
     def fmap_maybe(:error, _), do: :error
