@@ -110,10 +110,10 @@ defmodule Blackjack.Registry do
         if Map.has_key?(games, g_name) do
             {:noreply, {games, refs}}
         else
-            {:ok, game} = Blackjack.Game.start_link([])
-            new_games = Map.put(games, g_name, game)
-            ref = Process.monitor(game)
+            {:ok, pid} = DynamicSupervisor.start_child(Blackjack.GameSupervisor, Blackjack.Game)
+            ref = Process.monitor(pid)
             new_refs = Map.put(refs, ref, g_name)
+            new_games = Map.put(games, g_name, pid)
             {:noreply, {new_games, new_refs}}
         end
     end

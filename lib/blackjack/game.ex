@@ -1,5 +1,5 @@
 defmodule Blackjack.Game do
-    use Agent
+    use Agent, restart: :temporary
 
     alias __MODULE__
     alias Blackjack.Card, as: Card
