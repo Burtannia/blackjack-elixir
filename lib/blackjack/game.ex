@@ -37,7 +37,7 @@ defmodule Blackjack.Game do
     def to_string_hand(cards) do
         score = Card.score_string(Card.calc_score(cards))
         card_string = for c <- cards, into: "", do: " " <> to_string(c)
-        String.strip(card_string) <> " #{score}"
+        String.trim(card_string) <> " #{score}"
     end
 
     @spec to_string_scores(Game.t) :: String.t
