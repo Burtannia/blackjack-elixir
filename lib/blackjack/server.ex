@@ -43,7 +43,7 @@ defmodule Blackjack.Server do
         GenServer.call(server, {:stick, g_name, p_name})
     end
 
-    # Combination of 'new_game' and 'deal' for convenience
+    #Combination of 'new_game' and 'deal' for convenience
     def connect(server, g_name, p_name) do
         new_game(server, g_name)
         deal(server, g_name, p_name)
@@ -53,72 +53,81 @@ defmodule Blackjack.Server do
 
     @impl true
     def init(:ok) do
-        {:ok, %{}}
+        {:ok, {%{}, %{}}}
     end
 
     @impl true
-    def handle_call({:get_game, g_name}, _from, games) do
-        mgame =  Map.fetch(games, g_name)
-        {:reply, fmap_maybe(mgame, &to_string(&1)), games}
-    end
-
-    @impl true
-    def handle_call({:end_game, g_name}, _from, games) do
+    def handle_call({:get_game, g_name}, _from, state) do
+        {games, _} = state
         mgame = Map.fetch(games, g_name)
-        mscore = fmap_maybe(mgame, &Game.to_string_scores(&1))
-        {:reply, mscore, Map.delete(games, g_name)} # maybe expand later to collect score from game and update a "global" table
+        {:reply, mgame, state}
     end
 
     @impl true
-    def handle_call({:get_hand, g_name, p_name}, _from, games) do
+    def handle_call({:end_game, g_name}, _from, state) do
+        {games, _} = state
         mgame = Map.fetch(games, g_name)
-        mhand = bind_maybe(mgame, &Game.get_hand(&1, p_name))
-        mhand_string = fmap_maybe(mhand, &Game.to_string_hand(&1))
-        {:reply, mhand_string, games}
+        _ = fmap_maybe(mgame, &Agent.stop(&1))
+        # would like to pop games and refs here rather than leaving it to :DOWN
+        # but I don't see a way to efficiently acquire the ref in order to delete it
+        {:reply, mgame, state}
     end
 
     @impl true
-    def handle_call({:deal, g_name, p_name}, _from, games) do
+    def handle_call({:get_hand, g_name, p_name}, _from, state) do
+        {games, _} = state
         mgame = Map.fetch(games, g_name)
-        mgh = fmap_maybe(mgame, &Game.new_hand(&1, p_name))
-        case mgh do
-            {:ok, {new_game, hand}} ->
-                {:reply, {:ok, hand}, %{games | g_name => new_game}}
-            :error ->
-                {:reply, :error, games}
-        end
+        mhand = bind_maybe(mgame, &Game.hand(&1, p_name))
+        {:reply, mhand, games}
     end
 
     @impl true
-    def handle_call({:hit, g_name, p_name}, _from, games) do
+    def handle_call({:deal, g_name, p_name}, _from, state) do
+        {games, _} = state
         mgame = Map.fetch(games, g_name)
-        mgh = fmap_maybe(mgame, &Game.hit_hand(&1, p_name))
-        case mgh do
-            {:ok, {new_game, hand}} ->
-                {:reply, {:ok, hand}, %{games | g_name => new_game}}
-            :error ->
-                {:reply, :error, games}
-        end
+        mhand = fmap_maybe(mgame, &Game.deal(&1, p_name))
+        {:reply, mhand, state}
     end
 
     @impl true
-    def handle_call({:stick, g_name, p_name}, _from, games) do
+    def handle_call({:hit, g_name, p_name}, _from, state) do
+        {games, _} = state
         mgame = Map.fetch(games, g_name)
-        mgs = fmap_maybe(mgame, &Game.end_hand(&1, p_name))
-        case mgs do
-            {:ok, {new_game, score}} ->
-                {:reply, {:ok, to_string(score)}, %{games | g_name => new_game}}
-            :error ->
-                {:reply, :error, games}
-        end
+        mhand = fmap_maybe(mgame, &Game.hit(&1, p_name))
+        {:reply, mhand, state}
     end
 
     @impl true
-    def handle_cast({:new_game, g_name}, games) do
+    def handle_call({:stick, g_name, p_name}, _from, state) do
+        {games, _} = state
+        mgame = Map.fetch(games, g_name)
+        mscore = fmap_maybe(mgame, &Game.stick(&1, p_name))
+        {:reply, mscore, state}
+    end
+
+    # change this to call
+    @impl true
+    def handle_cast({:new_game, g_name}, {games, refs}) do
         if Map.has_key?(games, g_name) do
-            {:noreply, games}
+            {:noreply, {games, refs}}
         else
-            {:noreply, Map.put(games, g_name, Game.new())}
+            {:ok, game} = Blackjack.Game.start_link([])
+            new_games = Map.put(games, g_name, game)
+            ref = Process.monitor(game)
+            new_refs = Map.put(refs, ref, g_name)
+            {:noreply, {new_games, new_refs}}
         end
+    end
+
+    @impl true
+    def handle_info({:DOWN, ref, :process, _pid, _reason}, {games, refs}) do
+        {g_name, new_refs} = Map.pop(refs, ref)
+        new_games = Map.delete(games, g_name)
+        {:noreply, {new_games, new_refs}}
+    end
+
+    @impl true
+    def handle_info(_msg, state) do
+        {:noreply, state}
     end
 end

@@ -51,10 +51,15 @@ defmodule Blackjack.Card do
     @spec mk_card(rank, suit) :: Card.t
     def mk_card(rank, suit), do: %Card{suit: suit, rank: rank}
 
-    @spec deck() :: Enumerable.t # is there a way to make this more specific e.g. Stream.t(Card.t)?
-    def deck() do
+    @spec inf_deck() :: Enumerable.t # is there a way to make this more specific e.g. Stream.t(Card.t)?
+    def inf_deck() do
         Stream.repeatedly(&single_deck/0)
         |> Stream.concat()
+    end
+
+    @spec deal_cards(Enumerable.t, integer) :: {[Card.t], Enumerable.t}
+    def deal_cards(deck, n) do
+        {Enum.take(deck, n), Stream.drop(deck, n)}
     end
 
     @spec single_deck() :: [Card.t]

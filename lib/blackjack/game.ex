@@ -1,7 +1,10 @@
 defmodule Blackjack.Game do
+    use Agent
+
     alias __MODULE__
     alias Blackjack.Card, as: Card
     alias Blackjack.Score, as: Score
+
     import Maybe, only: [from_maybe: 2, fmap_maybe: 2]
 
     @type player :: String.t
@@ -17,7 +20,7 @@ defmodule Blackjack.Game do
 
     @spec new() :: Game.t
     def new() do
-        %Game{deck: Card.deck()}
+        %Game{deck: Card.inf_deck()}
     end
 
     defimpl String.Chars, for: Game do
@@ -50,39 +53,38 @@ defmodule Blackjack.Game do
         end
     end
 
-    @spec new_hand(Game.t, player) :: {Game.t, String.t}
+    @spec new_hand(Game.t, player) :: {[Card.t], Game.t}
     def new_hand(game, player) do
         if Map.has_key?(game.hands, player) do
             {:ok, hand} = get_hand(game, player)
-            {game, to_string_hand(hand)}
+            {to_string_hand(hand), game}
         else
-            cards = Enum.take(game.deck, 2)
-            new_deck = Stream.drop(game.deck, 2)
+            {cards, new_deck} = Card.deal_cards(game.deck, 2)
             hs = Map.put(game.hands, player, cards)
             {
-                %{game | deck: new_deck, hands: hs},
-                to_string_hand(cards)
+                cards,
+                %{game | deck: new_deck, hands: hs}
             }
         end
     end
 
     @spec get_hand(Game.t, player) :: Maybe.t
     def get_hand(game, player) do
-        Map.fetch(game.hands, player)
+        mcards = Map.fetch(game.hands, player)
+        fmap_maybe(mcards, &to_string_hand/1)
     end
 
-    @spec hit_hand(Game.t, player) :: {Game.t, String.t}
+    @spec hit_hand(Game.t, player) :: {[Card.t], Game.t}
     def hit_hand(game, player) do
-        card = Enum.take(game.deck, 1)
-        new_deck = Stream.drop(game.deck, 1)
-        hs = Map.update!(game.hands, player, fn xs -> xs ++ card end) # need to expand this to check if it exists first
-        { 
-            %{game | deck: new_deck, hands: hs},
-            to_string_hand(Map.fetch!(hs, player))
+        {cards, new_deck} = Card.deal_cards(game.deck, 1)
+        hs = Map.update!(game.hands, player, fn xs -> xs ++ cards end) # need to expand this to check if it exists first
+        {
+            Map.fetch!(hs, player),
+            %{game | deck: new_deck, hands: hs}
         }
     end
     
-    @spec end_hand(Game.t, player) :: {Game.t, Score.t}
+    @spec end_hand(Game.t, player) :: {Score.t, Game.t}
     def end_hand(%{deck: d, scores: ss, hands: hs}, player) do
         {cards, new_hs} = Map.pop!(hs, player) # need to handle this, maybe have entire function return a maybe type?
         score_raw = Card.calc_score(cards)
@@ -91,8 +93,33 @@ defmodule Blackjack.Game do
         score = from_maybe(mscore, %Score{total_score: score_val, games_played: 1})
         new_ss = Map.put(ss, player, score)
         { 
-            %Game{deck: d, scores: new_ss, hands: new_hs},
-            score
-        }  
+            score,
+            %Game{deck: d, scores: new_ss, hands: new_hs}
+        }
+    end
+
+    # Agent Stuff
+
+    def start_link(_opts) do
+        Agent.start_link(&new/0)
+    end
+
+    def hit(game, player) do
+        hand = Agent.get_and_update(game, &hit_hand(&1, player))
+        to_string_hand(hand)
+    end
+
+    def deal(game, player) do
+        hand = Agent.get_and_update(game, &new_hand(&1, player))
+        to_string_hand(hand)
+    end
+
+    def stick(game, player) do
+        score = Agent.get_and_update(game, &end_hand(&1, player))
+        to_string(score)
+    end
+
+    def hand(game, player) do
+        Agent.get(game, &get_hand(&1, player))
     end
 end
