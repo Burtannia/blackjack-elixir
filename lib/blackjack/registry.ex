@@ -68,7 +68,8 @@ defmodule Blackjack.Registry do
         mgame = Map.fetch(games, g_name)
         _ = fmap_maybe(mgame, &Agent.stop(&1))
         # would like to pop games and refs here rather than leaving it to :DOWN
-        # but I don't see a way to efficiently acquire the ref in order to delete it
+        # but I don't see a way to efficiently acquire the ref in order to delete it.
+        # maybe we should use a "dummy" call here to force the :DOWN message to be handled before this returns?
         {:reply, mgame, state}
     end
 
